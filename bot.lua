@@ -43,12 +43,77 @@ function decideNextAction()
 		print(colors.red .. "Player in range. Attacking." .. colors.reset)
 		ao.send({ Target = Game, Action = "PlayerAttack", Player = ao.id, AttackEnergy = tostring(player.energy) })
 	else
-		print(colors.red .. "No player in range or insufficient energy. Moving randomly." .. colors.reset)
-		local directionMap = { "Up", "Down", "Left", "Right", "UpRight", "UpLeft", "DownRight", "DownLeft" }
-		local randomIndex = math.random(#directionMap)
-		ao.send({ Target = Game, Action = "PlayerMove", Player = ao.id, Direction = directionMap[randomIndex] })
+		-- find the closer player Coordinates
+		local closestPlayer = findClosestCoordinate()
+		print(
+			colors.green .. "Closest Player Coordinates:" .. closestPlayer.x .. ":" .. closestPlayer.y .. colors.reset
+		)
+
+		local xDiff = closestPlayer.x - player.x
+		local yDiff = closestPlayer.y - player.y
+		print(colors.gray .. xDiff .. ":" .. yDiff .. colors.reset)
+
+		local direction = determineDirection(xDiff, yDiff)
+		print(colors.gray .. "Direction selected:" .. direction .. colors.reset)
+		ao.send({ Target = Game, Action = "PlayerMove", Player = ao.id, Direction = direction })
 	end
 	InAction = false -- InAction logic added
+end
+
+function determineDirection(xDiff, yDiff)
+	if yDiff > 0 then
+		if xDiff == 0 then
+			return "Down"
+		end
+		if xDiff < 0 then
+			return "DownLeft"
+		end
+		if xDiff > 0 then
+			return "DownRight"
+		end
+	end
+
+	if yDiff < 0 then
+		if xDiff == 0 then
+			return "Up"
+		end
+		if xDiff < 0 then
+			return "UpLeft"
+		end
+		if xDiff > 0 then
+			return "UpRight"
+		end
+	end
+
+	-- yDiff == 0
+	if xDiff < 0 then
+		return "Left"
+	end
+
+	if xDiff > 0 then
+		return "Right"
+	end
+
+	--ignore xDiff == 0 it will already be Attacking
+end
+
+function findClosestCoordinate()
+	local distance = 0
+	local selectedPlayer
+
+	for target, state in pairs(LatestGameState.Players) do
+		if target ~= ao.id then
+			-- calculate the hypotenuse c2 = x2 + y2
+			local c2 = (state.x * state.x) + (state.y * state.y)
+			local c = math.sqrt(c2)
+			if distance < c then
+				distance = c
+				selectedPlayer = state
+			end
+		end
+	end
+
+	return selectedPlayer
 end
 
 -- Handler to print game announcements and trigger game state updates.
